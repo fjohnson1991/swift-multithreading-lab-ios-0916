@@ -23,7 +23,9 @@ class ImageViewController : UIViewController {
                           "CIPhotoEffectProcess",
                           "CIExposureAdjust"]
     
-//    var flatigram = Flatigram()
+    let flatigram = Flatigram()
+    
+    //    var flatigram = Flatigram()
     
     @IBOutlet weak var filterButton: UIBarButtonItem!
     @IBOutlet weak var chooseImageButton: UIBarButtonItem!
@@ -40,6 +42,57 @@ class ImageViewController : UIViewController {
     
     @IBAction func filterButtonTapped(_ sender: AnyObject) {
         
+        if flatigram.state == .filtered {
+            presentFilteredAlert()
+        } else {
+            startProcess()
+        }
+    }
+}
+
+
+
+extension ImageViewController {
+    func filterImage(with completion: @escaping (Bool) -> Void) {
+        let queue = OperationQueue()
+        queue.name = "Image Filtration Queue"
+        queue.qualityOfService = .userInitiated
+        queue.maxConcurrentOperationCount = 1
+        
+        for filter in filtersToApply {
+            
+            let filtered = FilterOperation(flatigram: flatigram, filter: filter)
+            filtered.completionBlock = {
+                if queue.operationCount == 0 {
+                    DispatchQueue.main.async {
+                        self.flatigram.state = .filtered
+                        completion(true)
+                    }
+                }
+            }
+            
+            queue.addOperation(filtered)
+            print("Added FilterOperation with \(filter) to \(queue.name!)")
+        }
     }
     
+    
+    func startProcess() {
+        activityIndicator.startAnimating()
+        filterButton.isEnabled = false
+        chooseImageButton.isEnabled = false
+
+        filterImage { (success) in
+            print(success)
+            self.filterButton.isEnabled = true
+            self.chooseImageButton.isEnabled = true
+            self.activityIndicator.stopAnimating()
+            self.imageView.image = self.flatigram.image
+        }
+    }
 }
+
+
+
+
+
